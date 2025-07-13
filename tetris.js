@@ -16,6 +16,15 @@ canvas.height = 20 * blockSize;
 
 context.scale(blockSize, blockSize);
 
+// Initialize Telegram Web App (if available)
+if (window.Telegram && window.Telegram.WebApp) {
+  window.Telegram.WebApp.ready();
+  console.log("Telegram Web App initialized:", window.Telegram.WebApp.initDataUnsafe);
+  // Disable automatic share prompt
+  window.Telegram.WebApp.expand();
+  window.Telegram.WebApp.MainButton.hide(); // Hide main button to prevent accidental share
+}
+
 // Tetris pieces (7 standard shapes)
 const pieces = [
   [[1, 1, 1, 1]], // I
@@ -150,6 +159,11 @@ function draw() {
   context.fillStyle = '#000';
   context.fillRect(0, 0, 12, 20);
 
+  // Draw border around canvas
+  context.strokeStyle = '#FFF';
+  context.lineWidth = 0.1;
+  context.strokeRect(0, 0, 12, 20);
+
   arena.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value !== 0) {
@@ -191,7 +205,8 @@ function startNewGame() {
     board: createMatrix(12, 20),
     currentPiece: createPiece(),
     pos: { x: 5, y: 0 },
-    score: 0
+    score: 0,
+    username: username || null
   };
   arena = gameState.board;
   player.matrix = gameState.currentPiece;
@@ -352,7 +367,7 @@ function showGameOverScreen() {
   gameScreen.style.display = 'none';
   gameOverScreen.style.display = 'block';
   finalScore.textContent = player.score;
-  playerNameInput.value = username || ''; // Pre-fill with Telegram username
+  playerNameInput.value = username || '';
 }
 
 let dropCounter = 0;
