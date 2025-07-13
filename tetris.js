@@ -5,11 +5,13 @@ let gameState = null;
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
 
-// Scale canvas for mobile devices
-const scale = window.devicePixelRatio > 1 ? 20 : 15; // Smaller scale for high-DPI devices
-context.scale(scale, scale);
-canvas.width = 12 * scale;
-canvas.height = 20 * scale;
+// Set canvas pixel dimensions (12 columns x 20 rows, 30px per block)
+const blockSize = 30; // Size of each block in pixels
+canvas.width = 12 * blockSize; // 12 columns * 30px = 360px
+canvas.height = 20 * blockSize; // 20 rows * 30px = 600px
+
+// Scale the context to match block size
+context.scale(blockSize, blockSize);
 
 // Tetris pieces (7 standard shapes)
 const pieces = [
@@ -53,16 +55,19 @@ function createMatrix(w, h) {
 // Create a new piece
 function createPiece() {
   const index = Math.floor(Math.random() * pieces.length);
-  return pieces[index].map(row => row.slice());
+  const piece = pieces[index].map(row => row.slice());
+  return piece;
 }
 
 // Rotate a matrix (90 degrees clockwise)
 function rotateMatrix(matrix) {
+  if (!matrix || !matrix.length || !matrix[0]) return matrix; // Guard against invalid matrix
   const n = matrix.length;
   const m = matrix[0].length;
-  const result = createMatrix(m, n);
-  for (let y = 0; y < n; y++) {
-    for (let x = 0; x < m; x++) {
+  const result = [];
+  for (let x = 0; x < m; x++) {
+    result.push([]);
+    for (let y = 0; y < n; y++) {
       result[x][n - 1 - y] = matrix[y][x];
     }
   }
@@ -119,14 +124,14 @@ function clearLines() {
 // Draw the game
 function draw() {
   context.fillStyle = '#000';
-  context.fillRect(0, 0, canvas.width / scale, canvas.height / scale);
+  context.fillRect(0, 0, 12, 20); // Clear entire canvas (12x20 grid units)
 
   // Draw arena
   arena.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value !== 0) {
         context.fillStyle = colors[value];
-        context.fillRect(x, y, 1, 1);
+        context.fillRect(x, y, 1, 1); // Draw 1x1 grid unit
       }
     });
   });
@@ -143,7 +148,7 @@ function draw() {
 
   // Draw score
   context.fillStyle = '#FFF';
-  context.font = `${1 / scale}em sans-serif`;
+  context.font = `0.8px sans-serif`; // Adjusted font size for visibility
   context.fillText(`Score: ${player.score}`, 0.5, 1);
 }
 
@@ -250,71 +255,79 @@ document.addEventListener('keydown', event => {
     if (collide(arena, player)) {
       player.pos.x++;
     }
+    saveProgress();
   } else if (event.key === 'ArrowRight') {
     player.pos.x++;
     if (collide(arena, player)) {
       player.pos.x--;
     }
+    saveProgress();
   } else if (event.key === 'ArrowDown') {
     player.pos.y++;
     if (collide(arena, player)) {
       player.pos.y--;
     }
+    saveProgress();
   } else if (event.key === 'ArrowUp') {
-    const originalMatrix = player.matrix;
-    player.matrix = rotateMatrix(player.matrix);
-    if (collide(arena, player)) {
-      player.matrix = originalMatrix;
-    }
-  }
-});
-
-// Touch controls for Android
-let touchStartX = 0;
-let touchStartY = 0;
-
-canvas.addEventListener('touchstart', event => {
-  event.preventDefault();
-  touchStartX = event.touches[0].clientX;
-  touchStartY = event.touches[0].clientY;
-});
-
-canvas.addEventListener('touchend', event => {
-  event.preventDefault();
-  const touchEndX = event.changedTouches[0].clientX;
-  const touchEndY = event.changedTouches[0].clientY;
-  const deltaX = touchEndX - touchStartX;
-  const deltaY = touchEndY - touchStartY;
-
-  if (Math.abs(deltaX) > Math.abs(deltaY)) {
-    // Horizontal swipe
-    if (deltaX > 50) {
-      player.pos.x++;
-      if (collide(arena, player)) {
-        player.pos.x--;
-      }
-    } else if (deltaX < -50) {
-      player.pos.x--;
-      if (collide(arena, player)) {
-        player.pos.x++;
-      }
-    }
-  } else {
-    // Vertical swipe or tap
-    if (deltaY > 50) {
-      player.pos.y++;
-      if (collide(arena, player)) {
-        player.pos.y--;
-      }
-    } else if (Math.abs(deltaY) < 20 && Math.abs(deltaX) < 20) {
-      // Tap to rotate
+    if (player.matrix) {
       const originalMatrix = player.matrix;
       player.matrix = rotateMatrix(player.matrix);
       if (collide(arena, player)) {
         player.matrix = originalMatrix;
       }
+      saveProgress();
     }
   }
 });
+
+// Touch buttons for Android
+function setupTouchControls() {
+  const leftButton = document.getElementById('left-button');
+  const rightButton = document.getElementById('right-button');
+  const downButton = document.getElementById('down-button');
+  const rotateButton = document.getElementById('rotate-button');
+
+  leftButton.addEventListener('click', () => {
+    player.pos.x--;
+    if (collide(arena, player)) {
+      player.pos.x++;
+    }
+    draw();
+    saveProgress();
+  });
+
+  rightButton.addEventListener('click', () => {
+    player.pos.x++;
+    if (collide(arena, player)) {
+      player.pos.x--;
+    }
+    draw();
+    saveProgress();
+  });
+
+  downButton.addEventListener('click', () => {
+    player.pos.y++;
+    if (collide(arena, player)) {
+      player.pos.y--;
+    }
+    draw();
+    saveProgress();
+  });
+
+  rotateButton.addEventListener('click', () => {
+    if (player.matrix) {
+      const originalMatrix = player.matrix;
+      player.matrix = rotateMatrix(player.matrix);
+      if (collide(arena, player)) {
+        player.matrix = originalMatrix;
+      }
+      draw();
+      saveProgress();
+    }
+  });
+}
+
+// Initialize touch controls
+setupTouchControls();
 
 update();
