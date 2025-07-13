@@ -34,3 +34,32 @@ button {
 button:hover {
   background: #555;
 }
+#start-screen, #game-over-screen {
+  margin: 20px auto;
+}
+#start-screen h1, #game-over-screen h1 {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+#start-screen h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+#highscores {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+#highscores li {
+  font-size: 16px;
+  margin: 5px 0;
+}
+#player-name {
+  background: #333;
+  color: #fff;
+  border: 2px solid #fff;
+  padding: 10px;
+  font-size: 16px;
+  margin: 10px 0;
+  border-radius: 5px;
+}
