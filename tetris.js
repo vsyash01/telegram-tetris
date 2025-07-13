@@ -260,6 +260,7 @@ async function saveProgress() {
 async function loadProgress() {
   if (!uid) {
     console.error("No UID found, starting new game");
+    alert("Error: No user ID found. Starting new game.");
     startNewGame();
     showGameScreen();
     return;
@@ -267,6 +268,7 @@ async function loadProgress() {
   console.log(`Loading progress for uid=${uid}`);
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
+      console.log(`Load attempt ${attempt} for uid=${uid}: Sending request to ${backend}/load?uid=${uid}`);
       const response = await fetch(`${backend}/load?uid=${uid}`);
       const data = await response.json();
       console.log(`Load attempt ${attempt} for uid=${uid}: status=${response.status}, data=`, data);
@@ -283,6 +285,7 @@ async function loadProgress() {
     await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
   }
   console.error("Failed to load progress for uid=" + uid + " after 3 attempts, starting new game");
+  alert("Failed to load progress. Starting new game.");
   startNewGame();
   showGameScreen();
 }
