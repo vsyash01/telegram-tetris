@@ -111,17 +111,34 @@ function merge(arena, player) {
 // Clear completed lines
 function clearLines() {
   let linesCleared = 0;
-  outer: for (let y = arena.length - 1; y >= 0; y--) {
+  const rowsToRemove = [];
+
+  // Identify all filled rows
+  for (let y = arena.length - 1; y >= 0; y--) {
+    let isFilled = true;
     for (let x = 0; x < arena[y].length; x++) {
       if (arena[y][x] === 0) {
-        continue outer;
+        isFilled = false;
+        break;
       }
     }
-    arena.splice(y, 1);
-    arena.unshift(new Array(arena[0].length).fill(0));
-    linesCleared++;
+    if (isFilled) {
+      rowsToRemove.push(y);
+      linesCleared++;
+    }
   }
+
+  // Remove all filled rows and add empty rows at the top
   if (linesCleared > 0) {
+    // Sort rows in descending order to remove from bottom to top
+    rowsToRemove.sort((a, b) => b - a);
+    for (const y of rowsToRemove) {
+      arena.splice(y, 1);
+    }
+    // Add empty rows to the top
+    for (let i = 0; i < linesCleared; i++) {
+      arena.unshift(new Array(arena[0].length).fill(0));
+    }
     player.score += linesCleared * 100;
     saveProgress();
   }
