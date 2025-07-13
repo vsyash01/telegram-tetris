@@ -1,9 +1,5 @@
 let backend = "https://telegram-tetris-backend.vercel.app";
 let uid = new URLSearchParams(window.location.search).get('uid');
-let username = new URLSearchParams(window.location.search).get('username') || 
-               (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe.user 
-                ? window.Telegram.WebApp.initDataUnsafe.user.username || window.Telegram.WebApp.initDataUnsafe.user.first_name 
-                : null);
 
 let gameState = null;
 const canvas = document.getElementById('tetris');
@@ -15,14 +11,6 @@ canvas.width = 12 * blockSize;
 canvas.height = 20 * blockSize;
 
 context.scale(blockSize, blockSize);
-
-// Initialize Telegram Web App (if available)
-if (window.Telegram && window.Telegram.WebApp) {
-  window.Telegram.WebApp.ready();
-  console.log("Telegram Web App initialized:", window.Telegram.WebApp.initDataUnsafe);
-  window.Telegram.WebApp.expand();
-  window.Telegram.WebApp.MainButton.hide();
-}
 
 // Tetris pieces (7 standard shapes)
 const pieces = [
@@ -158,11 +146,6 @@ function draw() {
   context.fillStyle = '#000';
   context.fillRect(0, 0, 12, 20);
 
-  // Draw border around canvas
-  context.strokeStyle = '#FFF';
-  context.lineWidth = 0.1;
-  context.strokeRect(0, 0, 12, 20);
-
   arena.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value !== 0) {
@@ -204,8 +187,7 @@ function startNewGame() {
     board: createMatrix(12, 20),
     currentPiece: createPiece(),
     pos: { x: 5, y: 0 },
-    score: 0,
-    username: username || null
+    score: 0
   };
   arena = gameState.board;
   player.matrix = gameState.currentPiece;
@@ -215,25 +197,19 @@ function startNewGame() {
   saveProgress();
 }
 
-let lastSaveTime = 0;
 async function saveProgress() {
-  const now = performance.now();
-  if (now - lastSaveTime < 5000) return; // Save every 5 seconds
-  lastSaveTime = now;
-
   if (!uid) {
     console.error("No UID found, cannot save progress");
-    alert("Ошибка: ID пользователя не найден. Прогресс не сохранён.");
+    alert("Error: No user ID found. Progress cannot be saved.");
     return;
   }
   gameState = {
     board: arena,
     currentPiece: player.matrix,
     pos: player.pos,
-    score: player.score,
-    username: username || null
+    score: player.score
   };
-  console.log(`Preparing to save progress for uid=${uid}, username=${username}:`, gameState);
+  console.log(`Preparing to save progress for uid=${uid}:`, gameState);
   await new Promise(resolve => setTimeout(resolve, 100));
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -256,13 +232,13 @@ async function saveProgress() {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   console.error("Failed to save progress for uid=" + uid + " after 3 attempts");
-  alert("Не удалось сохранить прогресс. Попробуйте снова.");
+  alert("Failed to save progress. Please try again.");
 }
 
 async function loadProgress() {
   if (!uid) {
     console.error("No UID found, starting new game");
-    alert("Ошибка: ID пользователя не найден. Начинается новая игра.");
+    alert("Error: No user ID found. Starting new game.");
     startNewGame();
     showGameScreen();
     return;
@@ -275,6 +251,7 @@ async function loadProgress() {
       const data = await response.json();
       console.log(`Load attempt ${attempt} for uid=${uid}: status=${response.status}, data=`, data);
       if (response.ok && data.state) {
+        // Check if the loaded state is a game-over state
         const tempPlayer = { pos: data.state.pos, matrix: data.state.currentPiece };
         const tempArena = data.state.board;
         if (collide(tempArena, tempPlayer)) {
@@ -297,7 +274,7 @@ async function loadProgress() {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   console.error("Failed to load progress for uid=" + uid + " after 3 attempts, starting new game");
-  alert("Не удалось загрузить прогресс. Начинается новая игра.");
+  alert("Failed to load progress. Starting new game.");
   startNewGame();
   showGameScreen();
 }
@@ -305,7 +282,7 @@ async function loadProgress() {
 async function saveScore(name, score) {
   if (!uid) {
     console.error("No UID found, cannot save score");
-    alert("Ошибка: ID пользователя не найден. Счёт не сохранён.");
+    alert("Error: No user ID found. Score cannot be saved.");
     return;
   }
   try {
@@ -321,38 +298,30 @@ async function saveScore(name, score) {
       showStartScreen();
     } else {
       console.error("Failed to save score:", result.message);
-      alert("Не удалось сохранить счёт. Попробуйте снова.");
+      alert("Failed to save score. Please try again.");
     }
   } catch (err) {
     console.error("Error saving score:", err);
-    alert("Ошибка сохранения счёта: " + err.message);
+    alert("Error saving score: " + err.message);
   }
 }
 
-let cachedHighscores = null;
 async function loadHighscores() {
-  if (cachedHighscores) {
-    highscoresList.innerHTML = cachedHighscores.map(
-      (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score} (${entry.status})</li>`
-    ).join('');
-    return;
-  }
   try {
     console.log("Loading highscores");
     const response = await fetch(`${backend}/api/highscores`);
     const data = await response.json();
     console.log("Loaded highscores: status=", response.status, "data=", data);
     if (response.ok && data.highscores) {
-      cachedHighscores = data.highscores;
-      highscoresList.innerHTML = cachedHighscores.map(
-        (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score} (${entry.status})</li>`
+      highscoresList.innerHTML = data.highscores.map(
+        (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score}</li>`
       ).join('');
     } else {
-      highscoresList.innerHTML = '<li>Нет рекордов.</li>';
+      highscoresList.innerHTML = '<li>No high scores yet.</li>';
     }
   } catch (err) {
     console.error("Failed to load highscores:", err);
-    highscoresList.innerHTML = '<li>Ошибка загрузки рекордов.</li>';
+    highscoresList.innerHTML = '<li>Error loading high scores.</li>';
   }
 }
 
@@ -378,7 +347,7 @@ function showGameOverScreen() {
   gameScreen.style.display = 'none';
   gameOverScreen.style.display = 'block';
   finalScore.textContent = player.score;
-  playerNameInput.value = username || '';
+  playerNameInput.value = '';
 }
 
 let dropCounter = 0;
