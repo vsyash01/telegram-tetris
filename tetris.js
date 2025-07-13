@@ -221,6 +221,7 @@ function startNewGame() {
 async function saveProgress() {
   if (!uid) {
     console.error("No UID found, cannot save progress");
+    alert("Error: No user ID found. Progress cannot be saved.");
     return;
   }
   gameState = {
@@ -230,10 +231,10 @@ async function saveProgress() {
     score: player.score
   };
   console.log(`Preparing to save progress for uid=${uid}:`, gameState);
-  // Add 100ms delay to ensure state is stable
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise(resolve => setTimeout(resolve, 100)); // Delay for stability
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
+      console.log(`Save attempt ${attempt} for uid=${uid}: Sending request to ${backend}/save`);
       const response = await fetch(`${backend}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -242,6 +243,7 @@ async function saveProgress() {
       const result = await response.json();
       console.log(`Save attempt ${attempt} for uid=${uid}: status=${response.status}, result=`, result);
       if (response.ok) {
+        console.log(`Progress saved successfully for uid=${uid}`);
         return;
       }
       console.error(`Save attempt ${attempt} failed: status=${response.status}, message=${result.message || 'Unknown error'}`);
@@ -251,6 +253,7 @@ async function saveProgress() {
     await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
   }
   console.error("Failed to save progress for uid=" + uid + " after 3 attempts");
+  alert("Failed to save progress. Please try again.");
 }
 
 // Load progress from backend with retry
