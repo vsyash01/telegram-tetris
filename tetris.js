@@ -152,7 +152,7 @@ function clearLines() {
       arena.unshift(new Array(arena[0].length).fill(0));
     }
     player.score += linesCleared * 100;
-    saveProgress();
+    ;
   }
 }
 
@@ -214,7 +214,7 @@ function startNewGame() {
   player.pos = gameState.pos;
   player.score = gameState.score;
   draw();
-  saveProgress();
+  ;
 }
 
 // Save progress to backend with retry and delay
@@ -234,8 +234,8 @@ async function saveProgress() {
   await new Promise(resolve => setTimeout(resolve, 100)); // Delay for stability
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      console.log(`Save attempt ${attempt} for uid=${uid}: Sending request to ${backend}/save`);
-      const response = await fetch(`${backend}/save`, {
+      console.log(`Save attempt ${attempt} for uid=${uid}: Sending request to ${backend}/api/save`);
+      const response = await fetch(`${backend}/api/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: uid, state: gameState })
@@ -268,8 +268,8 @@ async function loadProgress() {
   console.log(`Loading progress for uid=${uid}`);
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      console.log(`Load attempt ${attempt} for uid=${uid}: Sending request to ${backend}/load?uid=${uid}`);
-      const response = await fetch(`${backend}/load?uid=${uid}`);
+      console.log(`Load attempt ${attempt} for uid=${uid}: Sending request to ${backend}/api/load?uid=${uid}`);
+      const response = await fetch(`${backend}/api/load?uid=${uid}`);
       const data = await response.json();
       console.log(`Load attempt ${attempt} for uid=${uid}: status=${response.status}, data=`, data);
       if (response.ok && data.state) {
@@ -293,7 +293,7 @@ async function loadProgress() {
 // Load high scores from backend
 async function loadHighscores() {
   try {
-    const response = await fetch(`${backend}/highscores`);
+    const response = await fetch(`${backend}/api/highscores`);
     const data = await response.json();
     console.log("Loaded highscores:", data);
     if (response.ok && data.highscores) {
@@ -316,7 +316,7 @@ async function saveScore(name, score) {
     return;
   }
   try {
-    const response = await fetch(`${backend}/save_score`, {
+    const response = await fetch(`${backend}/api/save_score`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid: uid, name: name, score: score })
