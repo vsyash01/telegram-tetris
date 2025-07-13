@@ -2,13 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Telegram Tetris</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>Telegram Tetris</h1>
-  <canvas id="tetris" width="240" height="400"></canvas>
+  <canvas id="tetris"></canvas>
+  <div class="controls">
+    <button id="left-button">Left</button>
+    <button id="right-button">Right</button>
+    <button id="down-button">Down</button>
+    <button id="rotate-button">Rotate</button>
+  </div>
   <script src="tetris.js"></script>
 </body>
 </html>
