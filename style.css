@@ -2,24 +2,25 @@ body {
   background: #000;
   color: #fff;
   text-align: center;
-  margin: 0;
+  margin: 20px; /* Add margin around the body for spacing from screen edges */
   font-family: sans-serif;
 }
 canvas {
   border: 2px solid #fff;
-  margin-top: 10px;
+  margin: 20px auto; /* Center canvas with top and bottom margin */
   width: 360px; /* 12 blocks * 30px */
   height: 600px; /* 20 blocks * 30px */
   max-width: 100%;
-  max-height: 80vh; /* Prevent overflow on small screens */
+  max-height: 70vh; /* Slightly reduced to ensure space for buttons */
   display: block;
 }
 .controls {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-top: 10px;
+  margin: 20px auto; /* Add margin above and below controls */
   flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+  padding-bottom: 20px; /* Extra padding at the bottom for better touch access */
 }
 button {
   background: #333;
