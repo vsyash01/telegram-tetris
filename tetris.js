@@ -1,5 +1,9 @@
 let backend = "https://telegram-tetris-backend.vercel.app";
 let uid = new URLSearchParams(window.location.search).get('uid');
+let username = new URLSearchParams(window.location.search).get('username') || 
+               (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe.user 
+                ? window.Telegram.WebApp.initDataUnsafe.user.username || window.Telegram.WebApp.initDataUnsafe.user.first_name 
+                : null);
 
 let gameState = null;
 const canvas = document.getElementById('tetris');
@@ -207,9 +211,10 @@ async function saveProgress() {
     board: arena,
     currentPiece: player.matrix,
     pos: player.pos,
-    score: player.score
+    score: player.score,
+    username: username || null // Include username
   };
-  console.log(`Preparing to save progress for uid=${uid}:`, gameState);
+  console.log(`Preparing to save progress for uid=${uid}, username=${username}:`, gameState);
   await new Promise(resolve => setTimeout(resolve, 100));
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -314,7 +319,7 @@ async function loadHighscores() {
     console.log("Loaded highscores: status=", response.status, "data=", data);
     if (response.ok && data.highscores) {
       highscoresList.innerHTML = data.highscores.map(
-        (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score}</li>`
+        (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score} (${entry.status})</li>`
       ).join('');
     } else {
       highscoresList.innerHTML = '<li>No high scores yet.</li>';
@@ -347,7 +352,7 @@ function showGameOverScreen() {
   gameScreen.style.display = 'none';
   gameOverScreen.style.display = 'block';
   finalScore.textContent = player.score;
-  playerNameInput.value = '';
+  playerNameInput.value = username || ''; // Pre-fill with Telegram username
 }
 
 let dropCounter = 0;
