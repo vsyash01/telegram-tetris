@@ -182,39 +182,73 @@ function startNewGame() {
   draw();
 }
 
-// Save progress to backend
-function saveProgress() {
-  if (!uid) return;
+// Save progress to backend with retry
+async function saveProgress() {
+  if (!uid) {
+    console.error("No UID found, cannot save progress");
+    return;
+  }
   gameState = {
     board: arena,
     currentPiece: player.matrix,
     pos: player.pos,
     score: player.score
   };
-  fetch(`${backend}/save`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ uid: uid, state: gameState })
-  })
-    .then(() => console.log("Progress saved"))
-    .catch(err => console.error("Error saving progress:", err));
+  console.log(`Saving progress for uid=${uid}:`, gameState);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(`${backend}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: uid, state: gameState })
+      });
+      if (response.ok) {
+        console.log(`Progress saved successfully for uid=${uid}`);
+        return;
+      } else {
+        console.error(`Save attempt ${attempt} failed: ${response.status}`);
+      }
+    } catch (err) {
+      console.error(`Save attempt ${attempt} error:`, err);
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+  }
+  console.error("Failed to save progress after 3 attempts");
+}
+
+// Load progress from backend with retry
+async function loadProgress() {
+  if (!uid) {
+    console.error("No UID found, starting new game");
+    startNewGame();
+    return;
+  }
+  console.log(`Loading progress for uid=${uid}`);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(`${backend}/load?uid=${uid}`);
+      const data = await response.json();
+      console.log(`Load response for uid=${uid}:`, data);
+      if (data.state) {
+        restoreGame(data.state);
+        return;
+      } else {
+        console.log(`No state found for uid=${uid}, starting new game`);
+        startNewGame();
+        return;
+      }
+    } catch (err) {
+      console.error(`Load attempt ${attempt} error:`, err);
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+  }
+  console.error("Failed to load progress after 3 attempts, starting new game");
+  startNewGame();
 }
 
 // Load progress from backend
 if (uid) {
-  fetch(`${backend}/load?uid=${uid}`)
-    .then(response => response.json())
-    .then(data => {
-      if (data.state) {
-        restoreGame(data.state);
-      } else {
-        startNewGame();
-      }
-    })
-    .catch(err => {
-      console.error("Error loading progress:", err);
-      startNewGame();
-    });
+  loadProgress();
 } else {
   startNewGame();
 }
@@ -333,7 +367,7 @@ function setupTouchControls() {
   rightButton.addEventListener('click', () => {
     player.pos.x++;
     if (collide(arena, player)) {
-      player.pos.x++;
+      player.pos.x--;
     }
     draw();
     saveProgress();
