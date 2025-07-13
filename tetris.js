@@ -76,13 +76,14 @@ function rotateMatrix(matrix) {
 
 // Check for collisions
 function collide(arena, player) {
+  if (!player.matrix || !player.pos) return true; // Guard against invalid state
   const m = player.matrix;
   const o = player.pos;
   for (let y = 0; y < m.length; y++) {
     for (let x = 0; x < m[y].length; x++) {
       if (
         m[y][x] !== 0 &&
-        (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0
+        (!arena[y + o.y] || arena[y + o.y][x + o.x] !== 0)
       ) {
         return true;
       }
@@ -137,14 +138,16 @@ function draw() {
   });
 
   // Draw player piece
-  player.matrix.forEach((row, y) => {
-    row.forEach((value, x) => {
-      if (value !== 0) {
-        context.fillStyle = colors[value];
-        context.fillRect(x + player.pos.x, y + player.pos.y, 1, 1);
-      }
+  if (player.matrix) {
+    player.matrix.forEach((row, y) => {
+      row.forEach((value, x) => {
+        if (value !== 0) {
+          context.fillStyle = colors[value];
+          context.fillRect(x + player.pos.x, y + player.pos.y, 1, 1);
+        }
+      });
     });
-  });
+  }
 
   // Draw score
   context.fillStyle = '#FFF';
@@ -220,33 +223,53 @@ if (uid) {
 let dropCounter = 0;
 let dropInterval = 1000;
 let lastTime = 0;
+let isRunning = true;
 
-function update(time = 0) {
+function update(time = performance.now()) {
+  if (!isRunning) return; // Stop loop if game is paused
+
   const deltaTime = time - lastTime;
   lastTime = time;
-  dropCounter += deltaTime;
 
-  if (dropCounter > dropInterval) {
-    player.pos.y++;
-    if (collide(arena, player)) {
-      player.pos.y--;
-      merge(arena, player);
-      clearLines();
-      player.matrix = createPiece();
-      player.pos = { x: 5, y: 0 };
+  // Debug timing
+  console.log(`deltaTime: ${deltaTime}, dropCounter: ${dropCounter}`);
+
+  if (deltaTime > 0 && player.matrix) { // Ensure valid timing and piece
+    dropCounter += deltaTime;
+    if (dropCounter > dropInterval) {
+      player.pos.y++;
       if (collide(arena, player)) {
-        arena = createMatrix(12, 20);
-        player.score = 0;
-        saveProgress();
+        player.pos.y--;
+        merge(arena, player);
+        clearLines();
+        player.matrix = createPiece();
+        player.pos = { x: 5, y: 0 };
+        if (collide(arena, player)) {
+          console.log("Game Over: Cannot place new piece");
+          arena = createMatrix(12, 20);
+          player.score = 0;
+          saveProgress();
+        }
       }
+      dropCounter = 0;
+      saveProgress();
     }
-    dropCounter = 0;
-    saveProgress();
   }
 
   draw();
   requestAnimationFrame(update);
 }
+
+// Handle visibility changes to prevent loop stalling
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    isRunning = true;
+    lastTime = performance.now(); // Reset timing
+    requestAnimationFrame(update);
+  } else {
+    isRunning = false;
+  }
+});
 
 // Keyboard controls
 document.addEventListener('keydown', event => {
@@ -266,6 +289,16 @@ document.addEventListener('keydown', event => {
     player.pos.y++;
     if (collide(arena, player)) {
       player.pos.y--;
+      merge(arena, player);
+      clearLines();
+      player.matrix = createPiece();
+      player.pos = { x: 5, y: 0 };
+      if (collide(arena, player)) {
+        console.log("Game Over: Cannot place new piece");
+        arena = createMatrix(12, 20);
+        player.score = 0;
+        saveProgress();
+      }
     }
     saveProgress();
   } else if (event.key === 'ArrowUp') {
@@ -278,6 +311,7 @@ document.addEventListener('keydown', event => {
       saveProgress();
     }
   }
+  draw();
 });
 
 // Touch buttons for Android
@@ -299,7 +333,7 @@ function setupTouchControls() {
   rightButton.addEventListener('click', () => {
     player.pos.x++;
     if (collide(arena, player)) {
-      player.pos.x--;
+      player.pos.x++;
     }
     draw();
     saveProgress();
@@ -309,6 +343,16 @@ function setupTouchControls() {
     player.pos.y++;
     if (collide(arena, player)) {
       player.pos.y--;
+      merge(arena, player);
+      clearLines();
+      player.matrix = createPiece();
+      player.pos = { x: 5, y: 0 };
+      if (collide(arena, player)) {
+        console.log("Game Over: Cannot place new piece");
+        arena = createMatrix(12, 20);
+        player.score = 0;
+        saveProgress();
+      }
     }
     draw();
     saveProgress();
