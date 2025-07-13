@@ -157,7 +157,7 @@ function draw() {
 
 // Restore game state
 function restoreGame(state) {
-  console.log("Restoring state:", state);
+  console.log("Restoring state for uid=" + uid + ":", state);
   gameState = state;
   arena = state.board;
   player.score = state.score;
@@ -168,7 +168,7 @@ function restoreGame(state) {
 
 // Start new game
 function startNewGame() {
-  console.log("Starting new game");
+  console.log("Starting new game for uid=" + uid);
   gameState = {
     board: createMatrix(12, 20),
     currentPiece: createPiece(),
@@ -202,18 +202,18 @@ async function saveProgress() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: uid, state: gameState })
       });
+      const result = await response.json();
+      console.log(`Save attempt ${attempt} for uid=${uid}: status=${response.status}, result=`, result);
       if (response.ok) {
-        console.log(`Progress saved successfully for uid=${uid}`);
         return;
-      } else {
-        console.error(`Save attempt ${attempt} failed: ${response.status}`);
       }
+      console.error(`Save attempt ${attempt} failed: status=${response.status}, message=${result.message || 'Unknown error'}`);
     } catch (err) {
-      console.error(`Save attempt ${attempt} error:`, err);
+      console.error(`Save attempt ${attempt} error for uid=${uid}:`, err);
     }
     await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
   }
-  console.error("Failed to save progress after 3 attempts");
+  console.error("Failed to save progress for uid=" + uid + " after 3 attempts");
 }
 
 // Load progress from backend with retry
@@ -228,21 +228,19 @@ async function loadProgress() {
     try {
       const response = await fetch(`${backend}/load?uid=${uid}`);
       const data = await response.json();
-      console.log(`Load response for uid=${uid}:`, data);
-      if (data.state) {
+      console.log(`Load attempt ${attempt} for uid=${uid}: status=${response.status}, data=`, data);
+      if (response.ok && data.state) {
         restoreGame(data.state);
         return;
       } else {
-        console.log(`No state found for uid=${uid}, starting new game`);
-        startNewGame();
-        return;
+        console.warn(`Load attempt ${attempt} for uid=${uid}: No state found or invalid response`);
       }
     } catch (err) {
-      console.error(`Load attempt ${attempt} error:`, err);
+      console.error(`Load attempt ${attempt} error for uid=${uid}:`, err);
     }
     await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
   }
-  console.error("Failed to load progress after 3 attempts, starting new game");
+  console.error("Failed to load progress for uid=" + uid + " after 3 attempts, starting new game");
   startNewGame();
 }
 
