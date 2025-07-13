@@ -74,18 +74,23 @@ function rotateMatrix(matrix) {
   return result;
 }
 
-// Check for collisions
+// Check for collisions (including boundary checks)
 function collide(arena, player) {
   if (!player.matrix || !player.pos) return true; // Guard against invalid state
   const m = player.matrix;
   const o = player.pos;
   for (let y = 0; y < m.length; y++) {
     for (let x = 0; x < m[y].length; x++) {
-      if (
-        m[y][x] !== 0 &&
-        (!arena[y + o.y] || arena[y + o.y][x + o.x] !== 0)
-      ) {
-        return true;
+      if (m[y][x] !== 0) {
+        // Check arena boundaries
+        if (
+          x + o.x < 0 || // Left boundary
+          x + o.x >= arena[0].length || // Right boundary
+          y + o.y >= arena.length || // Bottom boundary
+          (arena[y + o.y] && arena[y + o.y][x + o.x] !== 0) // Collision with other blocks
+        ) {
+          return true;
+        }
       }
     }
   }
@@ -317,6 +322,12 @@ document.addEventListener('keydown', event => {
     player.pos.x++;
     if (collide(arena, player)) {
       player.pos.x--;
+    } else {
+      // Ensure piece stays within right boundary
+      let maxX = arena[0].length - player.matrix[0].length;
+      if (player.pos.x > maxX) {
+        player.pos.x = maxX;
+      }
     }
     saveProgress();
   } else if (event.key === 'ArrowDown') {
@@ -341,6 +352,15 @@ document.addEventListener('keydown', event => {
       player.matrix = rotateMatrix(player.matrix);
       if (collide(arena, player)) {
         player.matrix = originalMatrix;
+      } else {
+        // Ensure rotated piece stays within boundaries
+        let maxX = arena[0].length - player.matrix[0].length;
+        if (player.pos.x > maxX) {
+          player.pos.x = maxX;
+        }
+        if (player.pos.x < 0) {
+          player.pos.x = 0;
+        }
       }
       saveProgress();
     }
@@ -368,6 +388,12 @@ function setupTouchControls() {
     player.pos.x++;
     if (collide(arena, player)) {
       player.pos.x--;
+    } else {
+      // Ensure piece stays within right boundary
+      let maxX = arena[0].length - player.matrix[0].length;
+      if (player.pos.x > maxX) {
+        player.pos.x = maxX;
+      }
     }
     draw();
     saveProgress();
@@ -398,6 +424,15 @@ function setupTouchControls() {
       player.matrix = rotateMatrix(player.matrix);
       if (collide(arena, player)) {
         player.matrix = originalMatrix;
+      } else {
+        // Ensure rotated piece stays within boundaries
+        let maxX = arena[0].length - player.matrix[0].length;
+        if (player.pos.x > maxX) {
+          player.pos.x = maxX;
+        }
+        if (player.pos.x < 0) {
+          player.pos.x = 0;
+        }
       }
       draw();
       saveProgress();
