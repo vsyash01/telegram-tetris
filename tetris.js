@@ -20,9 +20,8 @@ context.scale(blockSize, blockSize);
 if (window.Telegram && window.Telegram.WebApp) {
   window.Telegram.WebApp.ready();
   console.log("Telegram Web App initialized:", window.Telegram.WebApp.initDataUnsafe);
-  // Disable automatic share prompt
   window.Telegram.WebApp.expand();
-  window.Telegram.WebApp.MainButton.hide(); // Hide main button to prevent accidental share
+  window.Telegram.WebApp.MainButton.hide();
 }
 
 // Tetris pieces (7 standard shapes)
@@ -216,10 +215,15 @@ function startNewGame() {
   saveProgress();
 }
 
+let lastSaveTime = 0;
 async function saveProgress() {
+  const now = performance.now();
+  if (now - lastSaveTime < 5000) return; // Save every 5 seconds
+  lastSaveTime = now;
+
   if (!uid) {
     console.error("No UID found, cannot save progress");
-    alert("Error: No user ID found. Progress cannot be saved.");
+    alert("Ошибка: ID пользователя не найден. Прогресс не сохранён.");
     return;
   }
   gameState = {
@@ -227,7 +231,7 @@ async function saveProgress() {
     currentPiece: player.matrix,
     pos: player.pos,
     score: player.score,
-    username: username || null // Include username
+    username: username || null
   };
   console.log(`Preparing to save progress for uid=${uid}, username=${username}:`, gameState);
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -252,13 +256,13 @@ async function saveProgress() {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   console.error("Failed to save progress for uid=" + uid + " after 3 attempts");
-  alert("Failed to save progress. Please try again.");
+  alert("Не удалось сохранить прогресс. Попробуйте снова.");
 }
 
 async function loadProgress() {
   if (!uid) {
     console.error("No UID found, starting new game");
-    alert("Error: No user ID found. Starting new game.");
+    alert("Ошибка: ID пользователя не найден. Начинается новая игра.");
     startNewGame();
     showGameScreen();
     return;
@@ -271,7 +275,6 @@ async function loadProgress() {
       const data = await response.json();
       console.log(`Load attempt ${attempt} for uid=${uid}: status=${response.status}, data=`, data);
       if (response.ok && data.state) {
-        // Check if the loaded state is a game-over state
         const tempPlayer = { pos: data.state.pos, matrix: data.state.currentPiece };
         const tempArena = data.state.board;
         if (collide(tempArena, tempPlayer)) {
@@ -294,7 +297,7 @@ async function loadProgress() {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   console.error("Failed to load progress for uid=" + uid + " after 3 attempts, starting new game");
-  alert("Failed to load progress. Starting new game.");
+  alert("Не удалось загрузить прогресс. Начинается новая игра.");
   startNewGame();
   showGameScreen();
 }
@@ -302,7 +305,7 @@ async function loadProgress() {
 async function saveScore(name, score) {
   if (!uid) {
     console.error("No UID found, cannot save score");
-    alert("Error: No user ID found. Score cannot be saved.");
+    alert("Ошибка: ID пользователя не найден. Счёт не сохранён.");
     return;
   }
   try {
@@ -318,30 +321,38 @@ async function saveScore(name, score) {
       showStartScreen();
     } else {
       console.error("Failed to save score:", result.message);
-      alert("Failed to save score. Please try again.");
+      alert("Не удалось сохранить счёт. Попробуйте снова.");
     }
   } catch (err) {
     console.error("Error saving score:", err);
-    alert("Error saving score: " + err.message);
+    alert("Ошибка сохранения счёта: " + err.message);
   }
 }
 
+let cachedHighscores = null;
 async function loadHighscores() {
+  if (cachedHighscores) {
+    highscoresList.innerHTML = cachedHighscores.map(
+      (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score} (${entry.status})</li>`
+    ).join('');
+    return;
+  }
   try {
     console.log("Loading highscores");
     const response = await fetch(`${backend}/api/highscores`);
     const data = await response.json();
     console.log("Loaded highscores: status=", response.status, "data=", data);
     if (response.ok && data.highscores) {
-      highscoresList.innerHTML = data.highscores.map(
+      cachedHighscores = data.highscores;
+      highscoresList.innerHTML = cachedHighscores.map(
         (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score} (${entry.status})</li>`
       ).join('');
     } else {
-      highscoresList.innerHTML = '<li>No high scores yet.</li>';
+      highscoresList.innerHTML = '<li>Нет рекордов.</li>';
     }
   } catch (err) {
     console.error("Failed to load highscores:", err);
-    highscoresList.innerHTML = '<li>Error loading high scores.</li>';
+    highscoresList.innerHTML = '<li>Ошибка загрузки рекордов.</li>';
   }
 }
 
