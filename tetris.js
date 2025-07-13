@@ -182,7 +182,7 @@ function startNewGame() {
   draw();
 }
 
-// Save progress to backend with retry
+// Save progress to backend with retry and delay
 async function saveProgress() {
   if (!uid) {
     console.error("No UID found, cannot save progress");
@@ -194,7 +194,9 @@ async function saveProgress() {
     pos: player.pos,
     score: player.score
   };
-  console.log(`Saving progress for uid=${uid}:`, gameState);
+  console.log(`Preparing to save progress for uid=${uid}:`, gameState);
+  // Add 100ms delay to ensure state is stable
+  await new Promise(resolve => setTimeout(resolve, 100));
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const response = await fetch(`${backend}/save`, {
