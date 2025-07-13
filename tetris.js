@@ -1,5 +1,9 @@
 let backend = "https://telegram-tetris-backend.vercel.app";
 let uid = new URLSearchParams(window.location.search).get('uid');
+let username = new URLSearchParams(window.location.search).get('username') || 
+               (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe.user 
+                ? window.Telegram.WebApp.initDataUnsafe.user.username || window.Telegram.WebApp.initDataUnsafe.user.first_name 
+                : null);
 
 let gameState = null;
 const canvas = document.getElementById('tetris');
@@ -11,6 +15,15 @@ canvas.width = 12 * blockSize;
 canvas.height = 20 * blockSize;
 
 context.scale(blockSize, blockSize);
+
+// Initialize Telegram Web App (if available)
+if (window.Telegram && window.Telegram.WebApp) {
+  window.Telegram.WebApp.ready();
+  console.log("Telegram Web App initialized:", window.Telegram.WebApp.initDataUnsafe);
+  // Disable automatic share prompt
+  window.Telegram.WebApp.expand();
+  window.Telegram.WebApp.MainButton.hide(); // Hide main button to prevent accidental share
+}
 
 // Tetris pieces (7 standard shapes)
 const pieces = [
@@ -146,6 +159,11 @@ function draw() {
   context.fillStyle = '#000';
   context.fillRect(0, 0, 12, 20);
 
+  // Draw border around canvas
+  context.strokeStyle = '#FFF';
+  context.lineWidth = 0.1;
+  context.strokeRect(0, 0, 12, 20);
+
   arena.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value !== 0) {
@@ -187,7 +205,8 @@ function startNewGame() {
     board: createMatrix(12, 20),
     currentPiece: createPiece(),
     pos: { x: 5, y: 0 },
-    score: 0
+    score: 0,
+    username: username || null
   };
   arena = gameState.board;
   player.matrix = gameState.currentPiece;
@@ -207,9 +226,10 @@ async function saveProgress() {
     board: arena,
     currentPiece: player.matrix,
     pos: player.pos,
-    score: player.score
+    score: player.score,
+    username: username || null // Include username
   };
-  console.log(`Preparing to save progress for uid=${uid}:`, gameState);
+  console.log(`Preparing to save progress for uid=${uid}, username=${username}:`, gameState);
   await new Promise(resolve => setTimeout(resolve, 100));
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -314,7 +334,7 @@ async function loadHighscores() {
     console.log("Loaded highscores: status=", response.status, "data=", data);
     if (response.ok && data.highscores) {
       highscoresList.innerHTML = data.highscores.map(
-        (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score}</li>`
+        (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score} (${entry.status})</li>`
       ).join('');
     } else {
       highscoresList.innerHTML = '<li>No high scores yet.</li>';
@@ -347,7 +367,7 @@ function showGameOverScreen() {
   gameScreen.style.display = 'none';
   gameOverScreen.style.display = 'block';
   finalScore.textContent = player.score;
-  playerNameInput.value = '';
+  playerNameInput.value = username || '';
 }
 
 let dropCounter = 0;
