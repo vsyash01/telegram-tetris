@@ -6,11 +6,10 @@ const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
 
 // Set canvas pixel dimensions (12 columns x 20 rows, 30px per block)
-const blockSize = 30; // Size of each block in pixels
-canvas.width = 12 * blockSize; // 12 columns * 30px = 360px
-canvas.height = 20 * blockSize; // 20 rows * 30px = 600px
+const blockSize = 30;
+canvas.width = 12 * blockSize;
+canvas.height = 20 * blockSize;
 
-// Scale the context to match block size
 context.scale(blockSize, blockSize);
 
 // Tetris pieces (7 standard shapes)
@@ -35,7 +34,6 @@ const colors = [
   '#F00000' // Z: Red
 ];
 
-// Game state
 let arena = createMatrix(12, 20);
 let player = {
   pos: { x: 5, y: 0 },
@@ -43,7 +41,6 @@ let player = {
   score: 0
 };
 
-// Screen elements
 const startScreen = document.getElementById('start-screen');
 const gameScreen = document.getElementById('game-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
@@ -55,7 +52,6 @@ const playerNameInput = document.getElementById('player-name');
 const saveScoreButton = document.getElementById('save-score');
 const cancelScoreButton = document.getElementById('cancel-score');
 
-// Create empty matrix
 function createMatrix(w, h) {
   const matrix = [];
   while (h--) {
@@ -64,16 +60,14 @@ function createMatrix(w, h) {
   return matrix;
 }
 
-// Create a new piece
 function createPiece() {
   const index = Math.floor(Math.random() * pieces.length);
   const piece = pieces[index].map(row => row.slice());
   return piece;
 }
 
-// Rotate a matrix (90 degrees clockwise)
 function rotateMatrix(matrix) {
-  if (!matrix || !matrix.length || !matrix[0]) return matrix; // Guard against invalid matrix
+  if (!matrix || !matrix.length || !matrix[0]) return matrix;
   const n = matrix.length;
   const m = matrix[0].length;
   const result = [];
@@ -86,20 +80,18 @@ function rotateMatrix(matrix) {
   return result;
 }
 
-// Check for collisions (including boundary checks)
 function collide(arena, player) {
-  if (!player.matrix || !player.pos) return true; // Guard against invalid state
+  if (!player.matrix || !player.pos) return true;
   const m = player.matrix;
   const o = player.pos;
   for (let y = 0; y < m.length; y++) {
     for (let x = 0; x < m[y].length; x++) {
       if (m[y][x] !== 0) {
-        // Check arena boundaries
         if (
-          x + o.x < 0 || // Left boundary
-          x + o.x >= arena[0].length || // Right boundary
-          y + o.y >= arena.length || // Bottom boundary
-          (arena[y + o.y] && arena[y + o.y][x + o.x] !== 0) // Collision with other blocks
+          x + o.x < 0 ||
+          x + o.x >= arena[0].length ||
+          y + o.y >= arena.length ||
+          (arena[y + o.y] && arena[y + o.y][x + o.x] !== 0)
         ) {
           return true;
         }
@@ -109,7 +101,6 @@ function collide(arena, player) {
   return false;
 }
 
-// Merge player piece into arena
 function merge(arena, player) {
   player.matrix.forEach((row, y) => {
     row.forEach((value, x) => {
@@ -120,12 +111,10 @@ function merge(arena, player) {
   });
 }
 
-// Clear completed lines
 function clearLines() {
   let linesCleared = 0;
   const rowsToRemove = [];
 
-  // Identify all filled rows
   for (let y = arena.length - 1; y >= 0; y--) {
     let isFilled = true;
     for (let x = 0; x < arena[y].length; x++) {
@@ -140,38 +129,32 @@ function clearLines() {
     }
   }
 
-  // Remove all filled rows and add empty rows at the top
   if (linesCleared > 0) {
-    // Sort rows in descending order to remove from bottom to top
     rowsToRemove.sort((a, b) => b - a);
     for (const y of rowsToRemove) {
       arena.splice(y, 1);
     }
-    // Add empty rows to the top
     for (let i = 0; i < linesCleared; i++) {
       arena.unshift(new Array(arena[0].length).fill(0));
     }
     player.score += linesCleared * 100;
-    ;
+    saveProgress();
   }
 }
 
-// Draw the game
 function draw() {
   context.fillStyle = '#000';
-  context.fillRect(0, 0, 12, 20); // Clear entire canvas (12x20 grid units)
+  context.fillRect(0, 0, 12, 20);
 
-  // Draw arena
   arena.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value !== 0) {
         context.fillStyle = colors[value];
-        context.fillRect(x, y, 1, 1); // Draw 1x1 grid unit
+        context.fillRect(x, y, 1, 1);
       }
     });
   });
 
-  // Draw player piece
   if (player.matrix) {
     player.matrix.forEach((row, y) => {
       row.forEach((value, x) => {
@@ -183,13 +166,11 @@ function draw() {
     });
   }
 
-  // Draw score
   context.fillStyle = '#FFF';
-  context.font = `0.8px sans-serif`; // Adjusted font size for visibility
+  context.font = `0.8px sans-serif`;
   context.fillText(`Score: ${player.score}`, 0.5, 1);
 }
 
-// Restore game state
 function restoreGame(state) {
   console.log("Restoring state for uid=" + uid + ":", state);
   gameState = state;
@@ -200,7 +181,6 @@ function restoreGame(state) {
   draw();
 }
 
-// Start new game
 function startNewGame() {
   console.log("Starting new game for uid=" + uid);
   gameState = {
@@ -214,10 +194,9 @@ function startNewGame() {
   player.pos = gameState.pos;
   player.score = gameState.score;
   draw();
-  ;
+  saveProgress();
 }
 
-// Save progress to backend with retry and delay
 async function saveProgress() {
   if (!uid) {
     console.error("No UID found, cannot save progress");
@@ -231,7 +210,7 @@ async function saveProgress() {
     score: player.score
   };
   console.log(`Preparing to save progress for uid=${uid}:`, gameState);
-  await new Promise(resolve => setTimeout(resolve, 100)); // Delay for stability
+  await new Promise(resolve => setTimeout(resolve, 100));
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       console.log(`Save attempt ${attempt} for uid=${uid}: Sending request to ${backend}/api/save`);
@@ -250,13 +229,12 @@ async function saveProgress() {
     } catch (err) {
       console.error(`Save attempt ${attempt} error for uid=${uid}:`, err);
     }
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
   console.error("Failed to save progress for uid=" + uid + " after 3 attempts");
   alert("Failed to save progress. Please try again.");
 }
 
-// Load progress from backend with retry
 async function loadProgress() {
   if (!uid) {
     console.error("No UID found, starting new game");
@@ -273,16 +251,27 @@ async function loadProgress() {
       const data = await response.json();
       console.log(`Load attempt ${attempt} for uid=${uid}: status=${response.status}, data=`, data);
       if (response.ok && data.state) {
-        restoreGame(data.state);
+        // Check if the loaded state is a game-over state
+        const tempPlayer = { pos: data.state.pos, matrix: data.state.currentPiece };
+        const tempArena = data.state.board;
+        if (collide(tempArena, tempPlayer)) {
+          console.log(`Game-over state detected for uid=${uid}, starting new game`);
+          startNewGame();
+        } else {
+          restoreGame(data.state);
+        }
         showGameScreen();
         return;
       } else {
-        console.warn(`Load attempt ${attempt} for uid=${uid}: No state found or invalid response`);
+        console.warn(`Load attempt ${attempt} for uid=${uid}: No state found, starting new game`);
+        startNewGame();
+        showGameScreen();
+        return;
       }
     } catch (err) {
       console.error(`Load attempt ${attempt} error for uid=${uid}:`, err);
     }
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
   console.error("Failed to load progress for uid=" + uid + " after 3 attempts, starting new game");
   alert("Failed to load progress. Starting new game.");
@@ -290,12 +279,39 @@ async function loadProgress() {
   showGameScreen();
 }
 
-// Load high scores from backend
+async function saveScore(name, score) {
+  if (!uid) {
+    console.error("No UID found, cannot save score");
+    alert("Error: No user ID found. Score cannot be saved.");
+    return;
+  }
+  try {
+    console.log(`Saving score for uid=${uid}, name=${name}, score=${score}`);
+    const response = await fetch(`${backend}/api/save_score`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: uid, name: name, score: score })
+    });
+    const result = await response.json();
+    console.log(`Save score for uid=${uid}: status=${response.status}, result=`, result);
+    if (response.ok) {
+      showStartScreen();
+    } else {
+      console.error("Failed to save score:", result.message);
+      alert("Failed to save score. Please try again.");
+    }
+  } catch (err) {
+    console.error("Error saving score:", err);
+    alert("Error saving score: " + err.message);
+  }
+}
+
 async function loadHighscores() {
   try {
+    console.log("Loading highscores");
     const response = await fetch(`${backend}/api/highscores`);
     const data = await response.json();
-    console.log("Loaded highscores:", data);
+    console.log("Loaded highscores: status=", response.status, "data=", data);
     if (response.ok && data.highscores) {
       highscoresList.innerHTML = data.highscores.map(
         (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score}</li>`
@@ -309,31 +325,6 @@ async function loadHighscores() {
   }
 }
 
-// Save score to backend
-async function saveScore(name, score) {
-  if (!uid) {
-    console.error("No UID found, cannot save score");
-    return;
-  }
-  try {
-    const response = await fetch(`${backend}/api/save_score`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid: uid, name: name, score: score })
-    });
-    const result = await response.json();
-    console.log(`Save score for uid=${uid}: status=${response.status}, result=`, result);
-    if (response.ok) {
-      showStartScreen();
-    } else {
-      console.error("Failed to save score:", result.message);
-    }
-  } catch (err) {
-    console.error("Error saving score:", err);
-  }
-}
-
-// Show start screen
 function showStartScreen() {
   startScreen.style.display = 'block';
   gameScreen.style.display = 'none';
@@ -341,7 +332,6 @@ function showStartScreen() {
   loadHighscores();
 }
 
-// Show game screen
 function showGameScreen() {
   startScreen.style.display = 'none';
   gameScreen.style.display = 'block';
@@ -351,7 +341,6 @@ function showGameScreen() {
   requestAnimationFrame(update);
 }
 
-// Show game over screen
 function showGameOverScreen() {
   isRunning = false;
   startScreen.style.display = 'none';
@@ -361,22 +350,20 @@ function showGameOverScreen() {
   playerNameInput.value = '';
 }
 
-// Game loop
 let dropCounter = 0;
 let dropInterval = 1000;
 let lastTime = 0;
 let isRunning = false;
 
 function update(time = performance.now()) {
-  if (!isRunning) return; // Stop loop if game is paused
+  if (!isRunning) return;
 
   const deltaTime = time - lastTime;
   lastTime = time;
 
-  // Debug timing
   console.log(`deltaTime: ${deltaTime}, dropCounter: ${dropCounter}`);
 
-  if (deltaTime > 0 && player.matrix) { // Ensure valid timing and piece
+  if (deltaTime > 0 && player.matrix) {
     dropCounter += deltaTime;
     if (dropCounter > dropInterval) {
       player.pos.y++;
@@ -389,7 +376,7 @@ function update(time = performance.now()) {
         if (collide(arena, player)) {
           console.log("Game Over: Cannot place new piece");
           showGameOverScreen();
-          return; // Stop game loop
+          return;
         }
       }
       dropCounter = 0;
@@ -401,20 +388,18 @@ function update(time = performance.now()) {
   requestAnimationFrame(update);
 }
 
-// Handle visibility changes to prevent loop stalling
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     isRunning = true;
-    lastTime = performance.now(); // Reset timing
+    lastTime = performance.now();
     requestAnimationFrame(update);
   } else {
     isRunning = false;
   }
 });
 
-// Keyboard controls
 document.addEventListener('keydown', event => {
-  if (gameScreen.style.display !== 'block') return; // Ignore keys if not in game
+  if (gameScreen.style.display !== 'block') return;
   if (event.key === 'ArrowLeft') {
     player.pos.x--;
     if (collide(arena, player)) {
@@ -426,7 +411,6 @@ document.addEventListener('keydown', event => {
     if (collide(arena, player)) {
       player.pos.x--;
     } else {
-      // Ensure piece stays within right boundary
       let maxX = arena[0].length - player.matrix[0].length;
       if (player.pos.x > maxX) {
         player.pos.x = maxX;
@@ -455,7 +439,6 @@ document.addEventListener('keydown', event => {
       if (collide(arena, player)) {
         player.matrix = originalMatrix;
       } else {
-        // Ensure rotated piece stays within boundaries
         let maxX = arena[0].length - player.matrix[0].length;
         if (player.pos.x > maxX) {
           player.pos.x = maxX;
@@ -470,7 +453,6 @@ document.addEventListener('keydown', event => {
   draw();
 });
 
-// Touch buttons for Android
 function setupTouchControls() {
   const leftButton = document.getElementById('left-button');
   const rightButton = document.getElementById('right-button');
@@ -493,7 +475,6 @@ function setupTouchControls() {
     if (collide(arena, player)) {
       player.pos.x--;
     } else {
-      // Ensure piece stays within right boundary
       let maxX = arena[0].length - player.matrix[0].length;
       if (player.pos.x > maxX) {
         player.pos.x = maxX;
@@ -530,7 +511,6 @@ function setupTouchControls() {
       if (collide(arena, player)) {
         player.matrix = originalMatrix;
       } else {
-        // Ensure rotated piece stays within boundaries
         let maxX = arena[0].length - player.matrix[0].length;
         if (player.pos.x > maxX) {
           player.pos.x = maxX;
@@ -545,7 +525,6 @@ function setupTouchControls() {
   });
 }
 
-// Start screen button handlers
 newGameButton.addEventListener('click', () => {
   startNewGame();
   showGameScreen();
@@ -555,7 +534,6 @@ continueGameButton.addEventListener('click', () => {
   loadProgress();
 });
 
-// Game over screen button handlers
 saveScoreButton.addEventListener('click', () => {
   const name = playerNameInput.value.trim();
   if (name) {
@@ -570,6 +548,5 @@ cancelScoreButton.addEventListener('click', () => {
   showStartScreen();
 });
 
-// Initialize touch controls and show start screen
 setupTouchControls();
 showStartScreen();
