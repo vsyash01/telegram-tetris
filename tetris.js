@@ -43,6 +43,18 @@ let player = {
   score: 0
 };
 
+// Screen elements
+const startScreen = document.getElementById('start-screen');
+const gameScreen = document.getElementById('game-screen');
+const gameOverScreen = document.getElementById('game-over-screen');
+const highscoresList = document.getElementById('highscores');
+const newGameButton = document.getElementById('new-game');
+const continueGameButton = document.getElementById('continue-game');
+const finalScore = document.getElementById('final-score');
+const playerNameInput = document.getElementById('player-name');
+const saveScoreButton = document.getElementById('save-score');
+const cancelScoreButton = document.getElementById('cancel-score');
+
 // Create empty matrix
 function createMatrix(w, h) {
   const matrix = [];
@@ -202,6 +214,7 @@ function startNewGame() {
   player.pos = gameState.pos;
   player.score = gameState.score;
   draw();
+  saveProgress();
 }
 
 // Save progress to backend with retry and delay
@@ -245,6 +258,7 @@ async function loadProgress() {
   if (!uid) {
     console.error("No UID found, starting new game");
     startNewGame();
+    showGameScreen();
     return;
   }
   console.log(`Loading progress for uid=${uid}`);
@@ -255,6 +269,7 @@ async function loadProgress() {
       console.log(`Load attempt ${attempt} for uid=${uid}: status=${response.status}, data=`, data);
       if (response.ok && data.state) {
         restoreGame(data.state);
+        showGameScreen();
         return;
       } else {
         console.warn(`Load attempt ${attempt} for uid=${uid}: No state found or invalid response`);
@@ -266,20 +281,85 @@ async function loadProgress() {
   }
   console.error("Failed to load progress for uid=" + uid + " after 3 attempts, starting new game");
   startNewGame();
+  showGameScreen();
 }
 
-// Load progress from backend
-if (uid) {
-  loadProgress();
-} else {
-  startNewGame();
+// Load high scores from backend
+async function loadHighscores() {
+  try {
+    const response = await fetch(`${backend}/highscores`);
+    const data = await response.json();
+    console.log("Loaded highscores:", data);
+    if (response.ok && data.highscores) {
+      highscoresList.innerHTML = data.highscores.map(
+        (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score}</li>`
+      ).join('');
+    } else {
+      highscoresList.innerHTML = '<li>No high scores yet.</li>';
+    }
+  } catch (err) {
+    console.error("Failed to load highscores:", err);
+    highscoresList.innerHTML = '<li>Error loading high scores.</li>';
+  }
+}
+
+// Save score to backend
+async function saveScore(name, score) {
+  if (!uid) {
+    console.error("No UID found, cannot save score");
+    return;
+  }
+  try {
+    const response = await fetch(`${backend}/save_score`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: uid, name: name, score: score })
+    });
+    const result = await response.json();
+    console.log(`Save score for uid=${uid}: status=${response.status}, result=`, result);
+    if (response.ok) {
+      showStartScreen();
+    } else {
+      console.error("Failed to save score:", result.message);
+    }
+  } catch (err) {
+    console.error("Error saving score:", err);
+  }
+}
+
+// Show start screen
+function showStartScreen() {
+  startScreen.style.display = 'block';
+  gameScreen.style.display = 'none';
+  gameOverScreen.style.display = 'none';
+  loadHighscores();
+}
+
+// Show game screen
+function showGameScreen() {
+  startScreen.style.display = 'none';
+  gameScreen.style.display = 'block';
+  gameOverScreen.style.display = 'none';
+  isRunning = true;
+  lastTime = performance.now();
+  requestAnimationFrame(update);
+}
+
+// Show game over screen
+function showGameOverScreen() {
+  isRunning = false;
+  startScreen.style.display = 'none';
+  gameScreen.style.display = 'none';
+  gameOverScreen.style.display = 'block';
+  finalScore.textContent = player.score;
+  playerNameInput.value = '';
 }
 
 // Game loop
 let dropCounter = 0;
 let dropInterval = 1000;
 let lastTime = 0;
-let isRunning = true;
+let isRunning = false;
 
 function update(time = performance.now()) {
   if (!isRunning) return; // Stop loop if game is paused
@@ -302,9 +382,8 @@ function update(time = performance.now()) {
         player.pos = { x: 5, y: 0 };
         if (collide(arena, player)) {
           console.log("Game Over: Cannot place new piece");
-          arena = createMatrix(12, 20);
-          player.score = 0;
-          saveProgress();
+          showGameOverScreen();
+          return; // Stop game loop
         }
       }
       dropCounter = 0;
@@ -329,6 +408,7 @@ document.addEventListener('visibilitychange', () => {
 
 // Keyboard controls
 document.addEventListener('keydown', event => {
+  if (gameScreen.style.display !== 'block') return; // Ignore keys if not in game
   if (event.key === 'ArrowLeft') {
     player.pos.x--;
     if (collide(arena, player)) {
@@ -357,9 +437,8 @@ document.addEventListener('keydown', event => {
       player.pos = { x: 5, y: 0 };
       if (collide(arena, player)) {
         console.log("Game Over: Cannot place new piece");
-        arena = createMatrix(12, 20);
-        player.score = 0;
-        saveProgress();
+        showGameOverScreen();
+        return;
       }
     }
     saveProgress();
@@ -393,6 +472,7 @@ function setupTouchControls() {
   const rotateButton = document.getElementById('rotate-button');
 
   leftButton.addEventListener('click', () => {
+    if (gameScreen.style.display !== 'block') return;
     player.pos.x--;
     if (collide(arena, player)) {
       player.pos.x++;
@@ -402,6 +482,7 @@ function setupTouchControls() {
   });
 
   rightButton.addEventListener('click', () => {
+    if (gameScreen.style.display !== 'block') return;
     player.pos.x++;
     if (collide(arena, player)) {
       player.pos.x--;
@@ -417,6 +498,7 @@ function setupTouchControls() {
   });
 
   downButton.addEventListener('click', () => {
+    if (gameScreen.style.display !== 'block') return;
     player.pos.y++;
     if (collide(arena, player)) {
       player.pos.y--;
@@ -426,9 +508,8 @@ function setupTouchControls() {
       player.pos = { x: 5, y: 0 };
       if (collide(arena, player)) {
         console.log("Game Over: Cannot place new piece");
-        arena = createMatrix(12, 20);
-        player.score = 0;
-        saveProgress();
+        showGameOverScreen();
+        return;
       }
     }
     draw();
@@ -436,6 +517,7 @@ function setupTouchControls() {
   });
 
   rotateButton.addEventListener('click', () => {
+    if (gameScreen.style.display !== 'block') return;
     if (player.matrix) {
       const originalMatrix = player.matrix;
       player.matrix = rotateMatrix(player.matrix);
@@ -457,7 +539,31 @@ function setupTouchControls() {
   });
 }
 
-// Initialize touch controls
-setupTouchControls();
+// Start screen button handlers
+newGameButton.addEventListener('click', () => {
+  startNewGame();
+  showGameScreen();
+});
 
-update();
+continueGameButton.addEventListener('click', () => {
+  loadProgress();
+});
+
+// Game over screen button handlers
+saveScoreButton.addEventListener('click', () => {
+  const name = playerNameInput.value.trim();
+  if (name) {
+    saveScore(name, player.score);
+  } else {
+    console.log("No name entered, score not saved");
+    showStartScreen();
+  }
+});
+
+cancelScoreButton.addEventListener('click', () => {
+  showStartScreen();
+});
+
+// Initialize touch controls and show start screen
+setupTouchControls();
+showStartScreen();
