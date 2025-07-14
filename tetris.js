@@ -207,22 +207,14 @@ async function saveProgress() {
     alert("Error: No user ID found. Progress cannot be saved.");
     return;
   }
-  const now = performance.now();
-  const isGameOver = collide(arena, { pos: player.pos, matrix: player.matrix });
-  const isTabHidden = document.visibilityState !== 'visible';
-  if (now - lastSaveTime < saveInterval && !isGameOver && !isTabHidden) {
-    console.log(`Skipping save for uid=${uid}: Too soon since last save`);
-    return;
-  }
   gameState = {
-    board: arena,
-    currentPiece: player.matrix,
-    pos: player.pos,
+    board: arena.map(row => [...row]), // Deep copy to avoid reference issues
+    currentPiece: player.matrix ? player.matrix.map(row => [...row]) : null,
+    pos: { ...player.pos },
     score: player.score,
-    gameOver: isGameOver
+    gameOver: collide(arena, { pos: player.pos, matrix: player.matrix })
   };
   console.log(`Preparing to save progress for uid=${uid}:`, gameState);
-  await new Promise(resolve => setTimeout(resolve, 100));
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       console.log(`Save attempt ${attempt} for uid=${uid}: Sending request to ${backend}/api/save`);
@@ -235,7 +227,6 @@ async function saveProgress() {
       console.log(`Save attempt ${attempt} for uid=${uid}: status=${response.status}, result=`, result);
       if (response.ok) {
         console.log(`Progress saved successfully for uid=${uid}`);
-        lastSaveTime = now;
         return;
       }
       console.error(`Save attempt ${attempt} failed: status=${response.status}, message=${result.message || 'Unknown error'}`);
