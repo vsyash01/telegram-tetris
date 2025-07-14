@@ -322,8 +322,11 @@ async function saveScore(name, score) {
 }
 
 let cachedHighscores = null;
+let lastHighscoreFetch = 0;
+const highscoreCacheDuration = 300000; // 5 minutes
+
 async function loadHighscores() {
-  if (cachedHighscores) {
+  if (cachedHighscores && Date.now() - lastHighscoreFetch < highscoreCacheDuration) {
     console.log("Using cached highscores");
     highscoresList.innerHTML = cachedHighscores.map(
       (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score}</li>`
@@ -337,6 +340,7 @@ async function loadHighscores() {
     console.log("Loaded highscores: status=", response.status, "data=", data);
     if (response.ok && data.highscores) {
       cachedHighscores = data.highscores;
+      lastHighscoreFetch = Date.now();
       highscoresList.innerHTML = cachedHighscores.map(
         (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score}</li>`
       ).join('');
