@@ -199,7 +199,7 @@ function startNewGame() {
 }
 
 let lastSaveTime = 0;
-const saveInterval = 10000; // Save every 10 seconds
+const saveInterval = 15000; // Save every 15 seconds
 
 async function saveProgress() {
   if (!uid) {
@@ -207,12 +207,19 @@ async function saveProgress() {
     alert("Error: No user ID found. Progress cannot be saved.");
     return;
   }
+  const now = performance.now();
+  const isGameOver = collide(arena, { pos: player.pos, matrix: player.matrix });
+  const isTabHidden = document.visibilityState !== 'visible';
+  if (now - lastSaveTime < saveInterval && !isGameOver && !isTabHidden) {
+    console.log(`Skipping save for uid=${uid}: Too soon since last save`);
+    return;
+  }
   gameState = {
     board: arena,
     currentPiece: player.matrix,
     pos: player.pos,
     score: player.score,
-    gameOver: collide(arena, { pos: player.pos, matrix: player.matrix })
+    gameOver: isGameOver
   };
   console.log(`Preparing to save progress for uid=${uid}:`, gameState);
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -228,6 +235,7 @@ async function saveProgress() {
       console.log(`Save attempt ${attempt} for uid=${uid}: status=${response.status}, result=`, result);
       if (response.ok) {
         console.log(`Progress saved successfully for uid=${uid}`);
+        lastSaveTime = now;
         return;
       }
       console.error(`Save attempt ${attempt} failed: status=${response.status}, message=${result.message || 'Unknown error'}`);
@@ -256,6 +264,7 @@ async function loadProgress() {
       const data = await response.json();
       console.log(`Load attempt ${attempt} for uid=${uid}: status=${response.status}, data=`, data);
       if (response.ok && data.state) {
+        console.log(`Loaded state for uid=${uid}:`, data.state);
         // Check if the loaded state is a game-over state
         const tempPlayer = { pos: data.state.pos, matrix: data.state.currentPiece };
         const tempArena = data.state.board;
