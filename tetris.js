@@ -187,7 +187,8 @@ function startNewGame() {
     board: createMatrix(12, 20),
     currentPiece: createPiece(),
     pos: { x: 5, y: 0 },
-    score: 0
+    score: 0,
+    gameOver: false
   };
   arena = gameState.board;
   player.matrix = gameState.currentPiece;
@@ -207,7 +208,8 @@ async function saveProgress() {
     board: arena,
     currentPiece: player.matrix,
     pos: player.pos,
-    score: player.score
+    score: player.score,
+    gameOver: gameScreen.style.display !== 'block'
   };
   console.log(`Preparing to save progress for uid=${uid}:`, gameState);
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -254,7 +256,7 @@ async function loadProgress() {
         // Check if the loaded state is a game-over state
         const tempPlayer = { pos: data.state.pos, matrix: data.state.currentPiece };
         const tempArena = data.state.board;
-        if (collide(tempArena, tempPlayer)) {
+        if (collide(tempArena, tempPlayer) || data.state.gameOver) {
           console.log(`Game-over state detected for uid=${uid}, starting new game`);
           startNewGame();
         } else {
@@ -348,6 +350,7 @@ function showGameOverScreen() {
   gameOverScreen.style.display = 'block';
   finalScore.textContent = player.score;
   playerNameInput.value = '';
+  saveProgress(); // Save final state with gameOver flag
 }
 
 let dropCounter = 0;
@@ -395,6 +398,7 @@ document.addEventListener('visibilitychange', () => {
     requestAnimationFrame(update);
   } else {
     isRunning = false;
+    saveProgress(); // Save state when tab is hidden
   }
 });
 
