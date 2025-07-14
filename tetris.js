@@ -321,14 +321,23 @@ async function saveScore(name, score) {
   }
 }
 
+let cachedHighscores = null;
 async function loadHighscores() {
+  if (cachedHighscores) {
+    console.log("Using cached highscores");
+    highscoresList.innerHTML = cachedHighscores.map(
+      (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score}</li>`
+    ).join('');
+    return;
+  }
   try {
     console.log("Loading highscores");
     const response = await fetch(`${backend}/api/highscores`);
     const data = await response.json();
     console.log("Loaded highscores: status=", response.status, "data=", data);
     if (response.ok && data.highscores) {
-      highscoresList.innerHTML = data.highscores.map(
+      cachedHighscores = data.highscores;
+      highscoresList.innerHTML = cachedHighscores.map(
         (entry, index) => `<li>${index + 1}. ${entry.name}: ${entry.score}</li>`
       ).join('');
     } else {
