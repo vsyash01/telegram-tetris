@@ -209,7 +209,7 @@ async function saveProgress() {
     currentPiece: player.matrix,
     pos: player.pos,
     score: player.score,
-    gameOver: gameScreen.style.display !== 'block'
+    gameOver: gameScreen.style.display !== 'block' || collide(arena, { pos: player.pos, matrix: player.matrix })
   };
   console.log(`Preparing to save progress for uid=${uid}:`, gameState);
   await new Promise(resolve => setTimeout(resolve, 100));
