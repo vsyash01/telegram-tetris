@@ -198,10 +198,20 @@ function startNewGame() {
   saveProgress();
 }
 
+let lastSaveTime = 0;
+const saveInterval = 10000; // Save every 10 seconds
+
 async function saveProgress() {
   if (!uid) {
     console.error("No UID found, cannot save progress");
     alert("Error: No user ID found. Progress cannot be saved.");
+    return;
+  }
+  const now = performance.now();
+  const isGameOver = collide(arena, { pos: player.pos, matrix: player.matrix });
+  const isTabHidden = gameScreen.style.display !== 'block';
+  if (now - lastSaveTime < saveInterval && !isGameOver && !isTabHidden) {
+    console.log(`Skipping save for uid=${uid}: Too soon since last save`);
     return;
   }
   gameState = {
@@ -209,7 +219,7 @@ async function saveProgress() {
     currentPiece: player.matrix,
     pos: player.pos,
     score: player.score,
-    gameOver: gameScreen.style.display !== 'block' || collide(arena, { pos: player.pos, matrix: player.matrix })
+    gameOver: isGameOver
   };
   console.log(`Preparing to save progress for uid=${uid}:`, gameState);
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -225,6 +235,7 @@ async function saveProgress() {
       console.log(`Save attempt ${attempt} for uid=${uid}: status=${response.status}, result=`, result);
       if (response.ok) {
         console.log(`Progress saved successfully for uid=${uid}`);
+        lastSaveTime = now;
         return;
       }
       console.error(`Save attempt ${attempt} failed: status=${response.status}, message=${result.message || 'Unknown error'}`);
@@ -297,6 +308,7 @@ async function saveScore(name, score) {
     const result = await response.json();
     console.log(`Save score for uid=${uid}: status=${response.status}, result=`, result);
     if (response.ok) {
+      console.log(`Score saved successfully for uid=${uid}`);
       showStartScreen();
     } else {
       console.error("Failed to save score:", result.message);
@@ -350,7 +362,7 @@ function showGameOverScreen() {
   gameOverScreen.style.display = 'block';
   finalScore.textContent = player.score;
   playerNameInput.value = '';
-  saveProgress(); // Save final state with gameOver flag
+  saveProgress(); // Save final state
 }
 
 let dropCounter = 0;
